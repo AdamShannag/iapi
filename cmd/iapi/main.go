@@ -10,5 +10,5 @@ func main() {
 	urls := api.Search("cars")
 
 	// Download images
-	api.DownloadImages(urls, "../../images/", "g")
+	api.DownloadImages(urls, "./images/", "g")
 }
