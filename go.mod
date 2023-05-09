@@ -3,6 +3,7 @@ module github.com/AdamShannag/iapi
 go 1.20
 
 require (
+	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/briandowns/spinner v1.23.0
 	github.com/fatih/color v1.15.0
 	github.com/gocolly/colly v1.2.0
@@ -22,6 +23,7 @@ require (
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/temoto/robotstxt v1.1.2 // indirect
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53 // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/term v0.7.0 // indirect
