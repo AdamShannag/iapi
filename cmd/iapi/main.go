@@ -1,7 +1,7 @@
 package main
 
 import (
-	iapi "github.com/AdamShannag/iapi/giapi"
+	iapi "github.com/AdamShannag/iapi/websites/pinterest/giapi"
 )
 
 func main() {

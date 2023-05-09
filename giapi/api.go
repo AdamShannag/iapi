@@ -2,16 +2,12 @@ package giapi
 
 import (
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
-	"github.com/Jeffail/gabs/v2"
-	"golang.org/x/exp/slices"
 	"io"
 	"log"
 	"mime"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -19,12 +15,9 @@ import (
 	"github.com/gocolly/colly"
 )
 
-var scriptUrls []string
-
-func (i *GoogleImageApi) Search(q string) []ImageData {
-	var visitedUrls []string
-
-	url := fmt.Sprintf("%s%s", i.Website.GoogleURL, q)
+func (i *GoogleImageApi) Search(q string) []string {
+	url := fmt.Sprintf("%s%s", i.googleURL, q)
+	urls := []string{}
 
 	i.collector.OnRequest(func(r *colly.Request) {
 		fmt.Println(c.CyanString("Visting: "), c.BlueString(r.URL.String()))
@@ -35,19 +28,11 @@ func (i *GoogleImageApi) Search(q string) []ImageData {
 	})
 
 	i.collector.OnResponse(func(r *colly.Response) {
-		visitedUrls = append(visitedUrls, r.Request.URL.String())
 		fmt.Println(c.CyanString("Page visited: "), c.BlueString(r.Request.URL.String()))
 	})
 
-	i.collector.OnHTML(i.Website.ImageQuery, func(element *colly.HTMLElement) {
-		href := element.Attr("href")
-		url, _ := strings.CutPrefix(href, `/url?q=`)
-		if i.urlExclude(url) &&
-			strings.Contains(url, i.Website.WebsiteName) &&
-			!slices.ContainsFunc(visitedUrls, func(s string) bool { return strings.Contains(url, s) }) {
-			i.wait.Add(1)
-			go i.get(url)
-		}
+	i.collector.OnXML(i.imageXpathQuery, func(e *colly.XMLElement) {
+		urls = append(urls, e.Attr("src"))
 	})
 
 	i.collector.OnScraped(func(r *colly.Response) {
@@ -55,15 +40,8 @@ func (i *GoogleImageApi) Search(q string) []ImageData {
 	})
 
 	i.collector.Visit(url)
-	i.wait.Wait()
-	scriptUrls = []string{}
-	return i.Data.ImageData
-}
 
-func (i *GoogleImageApi) urlExclude(url string) bool {
-	return !(strings.HasPrefix(url, "/") ||
-		strings.Contains(url, "wiki") ||
-		strings.Contains(url, "google"))
+	return urls
 }
 
 func (i *GoogleImageApi) DownloadImage(url string, at, fname string) {
@@ -127,56 +105,4 @@ func (i *GoogleImageApi) randomBytes(size int, s string) string {
 	}
 
 	return fmt.Sprintf("%x-%s", buf, s)
-}
-
-func (i *GoogleImageApi) DownloadUrls(fileName string) {
-	data, _ := json.MarshalIndent(i.Data.ImageData, "", " ")
-
-	f, _ := os.Create(fmt.Sprintf("%s.json", fileName))
-	defer f.Close()
-
-	f.Write(data)
-
-	f.Sync()
-}
-
-func (i *GoogleImageApi) get(link string) {
-
-	defer i.wait.Done()
-
-	i.collector.OnHTML(`script#__PWS_DATA__`, func(element *colly.HTMLElement) {
-		if !slices.Contains(scriptUrls, element.Request.URL.String()) {
-			i.Mutex.Lock()
-			scriptUrls = append(scriptUrls, element.Request.URL.String())
-			i.Mutex.Unlock()
-
-			jsonParsed, err := gabs.ParseJSON([]byte(element.Text))
-			if err != nil {
-				log.Println(err)
-			}
-			contextBytes := jsonParsed.S("props", "context").Bytes()
-			var context Context
-			json.Unmarshal(contextBytes, &context)
-			imageData := ImageData{
-				Context: context,
-			}
-			for _, child := range jsonParsed.S("props", "initialReduxState", "pins").ChildrenMap() {
-				var img Image
-				json.Unmarshal(child.Bytes(), &img)
-				var imgInfo ImageInfo
-				imgB := child.S("images", "orig").Bytes()
-				json.Unmarshal(imgB, &imgInfo)
-				w := imgInfo.Width
-				h := imgInfo.Height
-				if (w >= i.Data.ImageSize.MinWidth) && (h >= i.Data.ImageSize.MinHeight) {
-					img.Info = imgInfo
-					imageData.Images = append(imageData.Images, img)
-				}
-			}
-			i.Mutex.Lock()
-			i.Data.ImageData = append(i.Data.ImageData, imageData)
-			i.Mutex.Unlock()
-		}
-	})
-	i.collector.Visit(link)
 }
