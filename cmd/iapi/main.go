@@ -1,20 +1,14 @@
 package main
 
-import (
-	iapi "github.com/AdamShannag/iapi/websites/pinterest/giapi"
-)
+import iapi "github.com/AdamShannag/iapi/giapi"
 
 func main() {
 	// initialize api
-	api := iapi.NewGoogleImageApi("pinterest",
-		iapi.ImageSize{
-			MinWidth:  500.0,
-			MinHeight: 1000.0,
-		})
+	api := iapi.NewGoogleImageApi()
 
 	// search for images
-	_ = api.Search("messi+pinterest")
+	urls := api.Search("cars")
 
-	// Download images urls
-	api.DownloadUrls("messi")
+	// Download images
+	api.DownloadImages(urls, "./images/", "g")
 }

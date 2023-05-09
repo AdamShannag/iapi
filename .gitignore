@@ -188,3 +188,4 @@ gen
 go.work
 
 **/*.json
+**/**/images/
